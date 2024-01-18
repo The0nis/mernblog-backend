@@ -9,9 +9,10 @@ const jwt = require("jsonwebtoken");
 const cookieParser = require("cookie-parser");
 const multer = require("multer");
 const fs = require("fs");
+require("dotenv").config();
 
 const uploadMiddleware = multer({ dest: "uploads/" });
-
+const connection_String = `mongodb+srv://${process.env.MONGO_USERNAME}:${process.env.MONGO_PASSWORD}@cluster0.n6pl1az.mongodb.net/?retryWrites=true&w=majority`;
 app.use(
   cors({
     credentials: true,
@@ -20,9 +21,7 @@ app.use(
 );
 app.use(express.json());
 app.use(cookieParser());
-mongoose.connect(
-  "mongodb+srv://monitechdev:k37oES1hvFWYGaMq@cluster0.n6pl1az.mongodb.net/?retryWrites=true&w=majority"
-);
+mongoose.connect(connection_String);
 app.use("/uploads", express.static(__dirname + "/uploads"));
 
 const salt = bcrypt.genSaltSync(10);
@@ -32,7 +31,10 @@ app.get("/test", (req, res) => {
 });
 
 app.get("/", (req, res) => {
-  res.json("Welcome to Monitech API Calls by Michael");
+  res.json("Welcome to Monitech API Calls by Michael Oni Samuel");
+  // res.json({
+  //   value: connection_String,
+  // });
 });
 
 app.post("/register", async (req, res) => {
@@ -117,24 +119,24 @@ app.post("/post", uploadMiddleware.single("file"), async (req, res) => {
   });
 });
 
-app.put('/post',uploadMiddleware.single('file'), async (req,res) => {
+app.put("/post", uploadMiddleware.single("file"), async (req, res) => {
   let newPath = null;
   if (req.file) {
-    const {originalname,path} = req.file;
-    const parts = originalname.split('.');
+    const { originalname, path } = req.file;
+    const parts = originalname.split(".");
     const ext = parts[parts.length - 1];
-    newPath = path+'.'+ext;
+    newPath = path + "." + ext;
     fs.renameSync(path, newPath);
   }
 
-  const {token} = req.cookies;
-  jwt.verify(token, securitySalt, {}, async (err,info) => {
+  const { token } = req.cookies;
+  jwt.verify(token, securitySalt, {}, async (err, info) => {
     if (err) throw err;
-    const {id,title,summary,content} = req.body;
+    const { id, title, summary, content } = req.body;
     const postDoc = await Post.findById(id);
     const isAuthor = JSON.stringify(postDoc.author) === JSON.stringify(info.id);
     if (!isAuthor) {
-      return res.status(400).json('you are not the author');
+      return res.status(400).json("you are not the author");
     }
     await Post.findByIdAndUpdate(id, {
       title,
@@ -143,12 +145,11 @@ app.put('/post',uploadMiddleware.single('file'), async (req,res) => {
       cover: newPath ? newPath : postDoc.cover,
     });
 
-     // Fetch the updated document after the update
-     const updatedPostDoc = await Post.findById(id);
+    // Fetch the updated document after the update
+    const updatedPostDoc = await Post.findById(id);
 
-     res.json(updatedPostDoc);
+    res.json(updatedPostDoc);
   });
-
 });
 
 app.get("/post", async (req, res) => {
